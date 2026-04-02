@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO items (name, category) VALUES (?, ?) \n         ON CONFLICT(name) DO UPDATE SET name=name RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ee6bd5682a969ea22dd6fc4b9134bb8facae59f44ae34d660675e15ab4953125"
+}
