@@ -5,3 +5,4 @@
 *.db-wal
 ui/node_modules
 ui/.svelte-kit
+dist/
