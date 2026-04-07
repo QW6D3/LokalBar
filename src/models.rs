@@ -31,3 +31,12 @@ pub struct OrderWithItems {
     pub recipes: Vec<String>,
     pub created_at: String,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct User {
+    pub id: i64,
+    pub username: String,
+    pub image_url: Option<String>,
+    pub credits: i64,
+    pub fav_recipes: Vec<RecipeWithIngredients>,
+}

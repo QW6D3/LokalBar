@@ -309,3 +309,29 @@ pub async fn get_orders_history(
 
     Ok(full_history)
 }
+
+
+// --- Users ---
+
+
+pub async fn create_user(){
+
+}
+pub async fn get_user(user_id: i64){
+
+}
+pub async fn update_user(user_id: i64){
+
+}
+pub async fn delete_user(user_id: i64){
+
+}
+pub async fn list_users(){
+
+}
+pub async fn add_credits_to_user(user_id: i64, amount: i64){
+
+}
+pub async fn remove_credits_from_user(user_id: i64, amount: i64){
+
+}
