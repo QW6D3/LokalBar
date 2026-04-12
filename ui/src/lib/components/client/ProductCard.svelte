@@ -1,6 +1,4 @@
 <script lang="ts">
-    import openPopUp from '$lib/components/client/OpenPop-up.svelte';
-
     interface Props {
         name: string;
         price: number;
@@ -11,9 +9,9 @@
 </script>
 
 <div class="product-card">
-    <button onclick={openPopUp}>i</button>
+    <button class="product-recipe">i</button>
     <img src={image} alt={name} class="product-image" />
-    <div>
+    <div class="product-infos">
         <h3>{name}</h3>
         <button class="add-to-cart">
             {price} €
@@ -21,8 +19,13 @@
     </div>
 </div>
 
-<style>
-    .add-to-cart {
-        cursor: pointer;
-    }
+<style lang="scss">
+    .product-card {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        height: 250px;
+        width: 100%;
+        background-color: white;
+}
 </style>
