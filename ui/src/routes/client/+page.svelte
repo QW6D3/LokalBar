@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import AddToCartButton from '$lib/components/AddToCartButton.svelte';
+	import ProductNavigation from '$lib/components/client/ProductNavigation.svelte';
 
 	let productsList: any[] = $state([]);
+	let activeCategory = $state('cocktails');
 
 	const fakeList: any[] = [
 		{ id: 1, name: 'Produit 1', price: 10, image: 'path/to/image1.jpg' },
@@ -11,8 +12,6 @@
 	];
 
 	productsList = fakeList;
-
-
 
 	let cart: { productId: number; quantity: number }[] = [];
 
@@ -35,17 +34,22 @@
 </script>
 
 <main>
-	<img class="logo" src="path/to/image.jpg" alt="LokalBar" />
-	<section class="products">
-		{#each productsList as product (product.id)}
-			<div class="product">
-				<img src={product.image} alt={product.name}>
-				<div>
-					<p>{product.name}</p>
-					<AddToCartButton productId={product.id} productPrice={product.price}/>
+	<section class="products-container">
+		<div class="header-list">
+			<img class="logo" src="path/to/image.jpg" alt="LokalBar" />
+			<ProductNavigation onCategoryChange={(name: string) => activeCategory = name}/>
+		</div>
+		<div class="products-list">
+		<p>La catégorie dans le parent est : {activeCategory}</p>
+			{#each productsList as product (product.id)}
+				<div class="product">
+					<img src={product.image} alt={product.name} />
+					<div>
+						<p>{product.name}</p>
+					</div>
 				</div>
-			</div>
-		{/each}
+			{/each}
+		</div>
 	</section>
 	<section class="basket">
 		<div>
@@ -65,20 +69,24 @@
 		display: flex;
 		flex-direction: row;
 		height: 100vh;
-		.logo {
-			position: absolute;
-			top: 2rem;
-			left: 2rem;
-		}
-		.products {
+		.products-container {
 			box-sizing: border-box;
 			height: 100%;
 			width: 70%;
 			background-color: lightcoral;
-			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			display: flex;
+			flex-direction: column;
 			gap: 1rem;
 			padding: 1rem;
+			.header-list {
+				display: flex;
+				align-items: center;
+				gap: 2rem;
+				.logo {
+					width: 150px;
+					height: auto;
+				}
+			}
 		}
 		.basket {
 			display: flex;
