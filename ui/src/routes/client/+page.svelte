@@ -3,25 +3,20 @@
 	import ProductNavigation from '$lib/components/client/ProductNavigation.svelte';
 	import ProductCard from '$lib/components/client/ProductCard.svelte';
 	import { gsap } from 'gsap';
-	import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
 
 	interface Product {
-    id: number;
-    name: string;
-    price: number;
-    image: string;
-}
-
-	gsap.registerPlugin(ScrollTrigger);
+		id: number;
+		name: string;
+		price: number;
+		image: string;
+	}
 
 	let productsList: any[] = $state([]);
 	let activeCategory = $state('cocktails');
-
-	// On utilise les chevrons < > pour définir les types possibles
-let selectedProduct = $state<Product | null>(null);
-	let isPopupOpen = $state(false);
-	let popupRef: HTMLElement;
+	let clonedCard: HTMLElement | null = null;
+	let originalButton: HTMLElement | null = null;
+	let isExpanded = $state(false);
+	let selectedProduct = $state<Product | null>(null);
 	let overlayRef: HTMLElement;
 
 	const fakeList: any[] = [
@@ -45,8 +40,6 @@ let selectedProduct = $state<Product | null>(null);
 
 	productsList = fakeList;
 
-	let cart: { productId: number; quantity: number }[] = [];
-
 	async function getProducts() {
 		try {
 			const res = await fetch('http://localhost:8080/api/products');
@@ -61,65 +54,149 @@ let selectedProduct = $state<Product | null>(null);
 		}
 	}
 
-	function openPopup(product: any, clickedElement: HTMLElement) {
+	function openCard(clickedButton: HTMLElement, product: any) {
 		selectedProduct = product;
-		isPopupOpen = true;
+		originalButton = clickedButton;
 
-		// On attend que Svelte crée la popup dans le DOM
-		setTimeout(() => {
-			// 1. POSITION DE DÉPART (First)
-			const firstRect = clickedElement.getBoundingClientRect();
+		const rect = clickedButton.getBoundingClientRect();
 
-			// 2. POSITION D'ARRIVÉE (Last)
-			// La popup est déjà centrée par le CSS, on prend sa position
-			const lastRect = popupRef.getBoundingClientRect();
+		// Crée le clone du bouton
+		clonedCard = clickedButton.cloneNode(true) as HTMLElement;
 
-			// 3. CALCUL DE L'INVERSION (Invert)
-			const deltaX = firstRect.left - lastRect.left;
-			const deltaY = firstRect.top - lastRect.top;
-			const scaleX = firstRect.width / lastRect.width;
-			const scaleY = firstRect.height / lastRect.height;
+		// Positionne le clone exactement sur le bouton original
+		clonedCard.style.position = 'fixed';
+		clonedCard.style.top = `${rect.top}px`;
+		clonedCard.style.left = `${rect.left}px`;
+		clonedCard.style.width = `${rect.width}px`;
+		clonedCard.style.height = `${rect.height}px`;
+		clonedCard.style.margin = '0';
+		clonedCard.style.zIndex = '1001';
+		clonedCard.style.borderRadius = '5px';
+		clonedCard.style.overflow = 'hidden';
 
-			gsap.to(overlayRef, { opacity: 1, duration: 0.3 });
+		// Cache le bouton original
+		originalButton.style.opacity = '0';
+		originalButton.style.pointerEvents = 'none';
 
-			// On fait "voler" la popup de la position du bouton vers le centre
-			gsap.fromTo(
-				popupRef,
-				{
-					x: deltaX,
-					y: deltaY,
-					scaleX: scaleX,
-					scaleY: scaleY,
-					opacity: 0.5,
-					borderRadius: '5px' // On part du border-radius du bouton
-				},
-				{
-					x: 0,
-					y: 0,
-					scaleX: 1,
-					scaleY: 1,
-					opacity: 1,
-					borderRadius: '20px', // Border-radius final de la popup
-					duration: 0.6,
-					ease: 'power3.out',
-					clearProps: 'transform' // Nettoie après l'anim
-				}
-			);
-		}, 10); // Un micro-délai pour le rendu
-	}
+		// Bloque le scroll
+		document.body.style.overflow = 'hidden';
 
-	function closePopup() {
-		gsap.to(popupRef, {
-			opacity: 0,
-			scale: 0.8,
-			duration: 0.3,
-			ease: 'power2.in',
+		// Ajoute le clone au body
+		document.body.appendChild(clonedCard);
+
+		// Anime l'overlay
+		gsap.fromTo(overlayRef, { opacity: 0, display: 'block' }, { opacity: 1, duration: 0.3 });
+
+		// Taille cible de la carte étendue
+		const targetW = 400;
+		const targetH = 600;
+
+		// Anime le clone vers le centre
+		gsap.to(clonedCard, {
+			top: (window.innerHeight - targetH) / 2,
+			left: (window.innerWidth - targetW) / 2,
+			width: targetW,
+			height: targetH,
+			borderRadius: '20px',
+			backgroundColor: 'white',
+			duration: 0.5,
+			ease: 'power3.out',
 			onComplete: () => {
-				isPopupOpen = false;
-				selectedProduct = null;
+				// Une fois l'animation terminée, remplace le contenu du clone
+				isExpanded = true;
+				renderExpandedContent();
 			}
 		});
-		gsap.to(overlayRef, { opacity: 0, duration: 0.3 });
+	}
+
+	function renderExpandedContent() {
+		if (!clonedCard || !selectedProduct) return;
+
+		// Remplace le contenu du clone par le vrai contenu
+		clonedCard.innerHTML = `
+			<div style="
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+				padding: 1.5rem;
+				box-sizing: border-box;
+				font-family: sans-serif;
+			">
+				<button id="close-btn" style="
+					align-self: flex-end;
+					background: none;
+					border: none;
+					font-size: 1.5rem;
+					cursor: pointer;
+					line-height: 1;
+					color: #333;
+				">×</button>
+				<h2 style="margin: 0.5rem 0;">${selectedProduct.name}</h2>
+				<p style="font-size: 1.2rem; font-weight: 600; color: #333;">${selectedProduct.price} €</p>
+				<p style="color: #666; font-size: 0.9rem;">Une délicieuse description de ton cocktail préféré...</p>
+				<button style="
+					margin-top: auto;
+					background: #222;
+					color: white;
+					border: none;
+					padding: 0.75rem 1.5rem;
+					border-radius: 10px;
+					cursor: pointer;
+					font-size: 1rem;
+				">Ajouter au panier</button>
+			</div>
+		`;
+
+		// Attache l'event du bouton fermer
+		clonedCard.querySelector('#close-btn')?.addEventListener('click', closeCard);
+	}
+
+	function closeCard() {
+		if (!clonedCard || !originalButton) return;
+
+		isExpanded = false;
+
+		const rect = originalButton.getBoundingClientRect();
+
+		// Vide le contenu étendu et remet le "i"
+		clonedCard.innerHTML = 'i';
+		clonedCard.style.display = 'flex';
+		clonedCard.style.alignItems = 'center';
+		clonedCard.style.justifyContent = 'center';
+		clonedCard.style.color = 'white';
+		clonedCard.style.background = 'blue';
+		clonedCard.style.fontSize = '1.2rem';
+
+		// Anime l'overlay
+		gsap.to(overlayRef, { opacity: 0, duration: 0.3, onComplete: () => {
+			overlayRef.style.display = 'none';
+		}});
+
+		// Anime le clone vers la position du bouton original
+		gsap.to(clonedCard, {
+			top: rect.top,
+			left: rect.left,
+			width: rect.width,
+			height: rect.height,
+			borderRadius: '5px',
+			duration: 0.4,
+			ease: 'power3.in',
+			onComplete: () => {
+				// Nettoie tout
+				clonedCard?.remove();
+				clonedCard = null;
+
+				if (originalButton) {
+					originalButton.style.opacity = '1';
+					originalButton.style.pointerEvents = 'auto';
+				}
+				originalButton = null;
+				selectedProduct = null;
+
+				// Débloque le scroll
+				document.body.style.overflow = '';
+			}
+		});
 	}
 
 	onMount(() => {
@@ -139,26 +216,12 @@ let selectedProduct = $state<Product | null>(null);
 					name={product.name}
 					price={product.price}
 					image={product.image}
-					openAction={(clickedElement: any) => openPopup(product, clickedElement)}
+					openAction={(clickedButton: HTMLElement) => openCard(clickedButton, product)}
 				/>
 			{/each}
-			{#if isPopupOpen && selectedProduct}
-				<div class="popup-overlay" bind:this={overlayRef} onclick={closePopup}></div>
-
-				<div class="product-popup" bind:this={popupRef}>
-					<button class="close-btn" onclick={closePopup}>×</button>
-
-					<div class="popup-content">
-						<img src={selectedProduct.image} alt={selectedProduct.name} />
-						<h2>{selectedProduct.name}</h2>
-						<p class="price">{selectedProduct.price} €</p>
-						<p class="description">Une délicieuse description de ton cocktail préféré...</p>
-						<button class="add-btn">Ajouter au panier</button>
-					</div>
-				</div>
-			{/if}
 		</div>
 	</section>
+
 	<section class="basket">
 		<div>
 			<h2>Panier</h2>
@@ -169,6 +232,9 @@ let selectedProduct = $state<Product | null>(null);
 		</div>
 		<button>Valider la commande</button>
 	</section>
+
+	<!-- Overlay -->
+	<div class="popup-overlay" bind:this={overlayRef} onclick={closeCard}></div>
 </main>
 
 <style lang="scss">
@@ -177,6 +243,7 @@ let selectedProduct = $state<Product | null>(null);
 		display: flex;
 		flex-direction: row;
 		height: 100vh;
+
 		.products-container {
 			box-sizing: border-box;
 			height: 100%;
@@ -186,14 +253,17 @@ let selectedProduct = $state<Product | null>(null);
 			flex-direction: column;
 			gap: 1rem;
 			padding: 1rem;
+
 			.header-list {
 				display: flex;
 				align-items: center;
 				gap: 2rem;
+
 				.logo {
 					height: auto;
 				}
 			}
+
 			.products-list {
 				display: grid;
 				grid-template-columns: repeat(4, 1fr);
@@ -201,6 +271,7 @@ let selectedProduct = $state<Product | null>(null);
 				gap: 15px;
 			}
 		}
+
 		.basket {
 			display: flex;
 			box-sizing: border-box;
@@ -211,5 +282,15 @@ let selectedProduct = $state<Product | null>(null);
 			justify-content: space-between;
 			padding: 1rem;
 		}
+	}
+
+	.popup-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.5);
+		opacity: 0;
+		display: none;
+		z-index: 1000;
+		cursor: pointer;
 	}
 </style>
