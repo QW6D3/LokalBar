@@ -73,7 +73,7 @@
 			font-size: 1.2rem;
 			cursor: pointer;
 			padding: 4px 16px;
-			color: white;
+			color: black;
             -webkit-tap-highlight-color: transparent;
 		}
 
@@ -83,7 +83,7 @@
 			left: 0;
 			height: 2px;
 			width: 0;
-			background: white;
+			background: black;
 			border-radius: 2px;
 		}
 	}
