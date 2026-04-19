@@ -1,14 +1,25 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { mount, unmount } from 'svelte';
 	import ProductNavigation from '$lib/components/client/ProductNavigation.svelte';
+	import ProductInformations from './../../lib/components/client/ProductInformations.svelte';
 	import ProductCard from '$lib/components/client/ProductCard.svelte';
 	import { gsap } from 'gsap';
+	import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+	gsap.registerPlugin(ScrollTrigger);
+
 
 	interface Product {
 		id: number;
 		name: string;
 		price: number;
 		image: string;
+	}
+
+	interface CartItem {
+		product: Product;
+		quantity: number;
 	}
 
 	let productsList: any[] = $state([]);
@@ -18,6 +29,8 @@
 	let isExpanded = $state(false);
 	let selectedProduct = $state<Product | null>(null);
 	let overlayRef: HTMLElement;
+	let mountedComponent: ReturnType<typeof mount> | null = null;
+	let cart: Array<CartItem> = $state([]);
 
 	const fakeList: any[] = [
 		{ id: 1, name: 'Mojito', price: 10, image: 'path/to/image1.jpg' },
@@ -55,110 +68,62 @@
 	}
 
 	function openCard(clickedButton: HTMLElement, product: any) {
-		selectedProduct = product;
-		originalButton = clickedButton;
+    selectedProduct = product;
+    originalButton = clickedButton;
 
-		const rect = clickedButton.getBoundingClientRect();
+    const rect = clickedButton.getBoundingClientRect();
 
-		// Crée le clone du bouton
-		clonedCard = clickedButton.cloneNode(true) as HTMLElement;
+    clonedCard = document.createElement('div');
+    clonedCard.style.cssText = `
+        position: fixed;
+        top: ${rect.top}px;
+        left: ${rect.left}px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
+        z-index: 1001;
+        border-radius: 5px;
+        overflow: hidden;
+        background-color: white; 
+    `;
 
-		// Positionne le clone exactement sur le bouton original
-		clonedCard.style.position = 'fixed';
-		clonedCard.style.top = `${rect.top}px`;
-		clonedCard.style.left = `${rect.left}px`;
-		clonedCard.style.width = `${rect.width}px`;
-		clonedCard.style.height = `${rect.height}px`;
-		clonedCard.style.margin = '0';
-		clonedCard.style.zIndex = '1001';
-		clonedCard.style.borderRadius = '5px';
-		clonedCard.style.overflow = 'hidden';
+    originalButton.style.opacity = '0';
+    document.body.appendChild(clonedCard);
 
-		// Cache le bouton original
-		originalButton.style.opacity = '0';
-		originalButton.style.pointerEvents = 'none';
+    gsap.to(overlayRef, { opacity: 1, display: 'block', duration: 0.2 });
 
-		// Bloque le scroll
-		document.body.style.overflow = 'hidden';
+    const targetW = 400;
+    const targetH = 600;
 
-		// Ajoute le clone au body
-		document.body.appendChild(clonedCard);
-
-		// Anime l'overlay
-		gsap.fromTo(overlayRef, { opacity: 0, display: 'block' }, { opacity: 1, duration: 0.3 });
-
-		// Taille cible de la carte étendue
-		const targetW = 400;
-		const targetH = 600;
-
-		// Anime le clone vers le centre
-		gsap.to(clonedCard, {
-			top: (window.innerHeight - targetH) / 2,
-			left: (window.innerWidth - targetW) / 2,
-			width: targetW,
-			height: targetH,
-			borderRadius: '20px',
-			backgroundColor: 'white',
-			duration: 0.5,
-			ease: 'power3.out',
-			onComplete: () => {
-				// Une fois l'animation terminée, remplace le contenu du clone
-				isExpanded = true;
-				renderExpandedContent();
-			}
-		});
-	}
-
-	function renderExpandedContent() {
-		if (!clonedCard || !selectedProduct) return;
-
-		// Remplace le contenu du clone par le vrai contenu
-		clonedCard.innerHTML = `
-			<div style="
-				display: flex;
-				flex-direction: column;
-				height: 100%;
-				padding: 1.5rem;
-				box-sizing: border-box;
-				font-family: sans-serif;
-			">
-				<button id="close-btn" style="
-					align-self: flex-end;
-					background: none;
-					border: none;
-					font-size: 1.5rem;
-					cursor: pointer;
-					line-height: 1;
-					color: #333;
-				">×</button>
-				<h2 style="margin: 0.5rem 0;">${selectedProduct.name}</h2>
-				<p style="font-size: 1.2rem; font-weight: 600; color: #333;">${selectedProduct.price} €</p>
-				<p style="color: #666; font-size: 0.9rem;">Une délicieuse description de ton cocktail préféré...</p>
-				<button style="
-					margin-top: auto;
-					background: #222;
-					color: white;
-					border: none;
-					padding: 0.75rem 1.5rem;
-					border-radius: 10px;
-					cursor: pointer;
-					font-size: 1rem;
-				">Ajouter au panier</button>
-			</div>
-		`;
-
-		// Attache l'event du bouton fermer
-		clonedCard.querySelector('#close-btn')?.addEventListener('click', closeCard);
-	}
-
+    gsap.to(clonedCard, {
+        top: (window.innerHeight - targetH) / 2,
+        left: (window.innerWidth - targetW) / 2,
+        width: targetW,
+        height: targetH,
+        borderRadius: '20px',
+        duration: 0.9,
+        ease: 'power4.out',
+        onStart: () => {
+            mountedComponent = mount(ProductInformations, {
+                target: clonedCard!,
+                props: {
+                    product: selectedProduct,
+                    onClose: closeCard,
+                    onAddToCart: (p: Product) => console.log('Ajouté :', p)
+                }
+            });
+        }
+    });
+}
 	function closeCard() {
 		if (!clonedCard || !originalButton) return;
 
 		isExpanded = false;
 
-		const rect = originalButton.getBoundingClientRect();
+		if (mountedComponent) {
+			unmount(mountedComponent);
+			mountedComponent = null;
+		}
 
-		// Vide le contenu étendu et remet le "i"
 		clonedCard.innerHTML = 'i';
 		clonedCard.style.display = 'flex';
 		clonedCard.style.alignItems = 'center';
@@ -167,22 +132,25 @@
 		clonedCard.style.background = 'blue';
 		clonedCard.style.fontSize = '1.2rem';
 
-		// Anime l'overlay
-		gsap.to(overlayRef, { opacity: 0, duration: 0.3, onComplete: () => {
-			overlayRef.style.display = 'none';
-		}});
+		const rect = originalButton.getBoundingClientRect();
 
-		// Anime le clone vers la position du bouton original
+		gsap.to(overlayRef, {
+			opacity: 0,
+			duration: 0.3,
+			onComplete: () => {
+				overlayRef.style.display = 'none';
+			}
+		});
+
 		gsap.to(clonedCard, {
 			top: rect.top,
 			left: rect.left,
 			width: rect.width,
 			height: rect.height,
 			borderRadius: '5px',
-			duration: 0.4,
+			duration: 0.5,
 			ease: 'power3.in',
 			onComplete: () => {
-				// Nettoie tout
 				clonedCard?.remove();
 				clonedCard = null;
 
@@ -193,14 +161,42 @@
 				originalButton = null;
 				selectedProduct = null;
 
-				// Débloque le scroll
 				document.body.style.overflow = '';
 			}
 		});
 	}
+	function addProductToCart(product: Product) {
+    const existingItem = cart.find(item => item.product.id === product.id);
 
-	onMount(() => {
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        cart.push({ 
+            product: { ...product }, 
+            quantity: 1 
+        });
+    }
+}
+
+	onMount(async () => {
 		getProducts();
+
+		await tick();
+
+		const cards = document.querySelectorAll('.product-card > *');
+		gsap.to(cards, {
+			opacity: 1,
+			y: 0,
+			duration: 0.8,
+			stagger: 0.1,
+			ease: 'power4.out',
+			scrollTrigger: {
+				trigger: '.products-list',
+				start: 'top 80%',
+				end: 'bottom 20%',
+				toggleActions: 'play none none reverse'
+			}
+		})
 	});
 </script>
 
@@ -217,6 +213,7 @@
 					price={product.price}
 					image={product.image}
 					openAction={(clickedButton: HTMLElement) => openCard(clickedButton, product)}
+					addToCart={() => addProductToCart(product)}
 				/>
 			{/each}
 		</div>
@@ -225,10 +222,9 @@
 	<section class="basket">
 		<div>
 			<h2>Panier</h2>
-			<ul>
-				<li>Produit 1 - Quantité: 2</li>
-				<li>Produit 2 - Quantité: 1</li>
-			</ul>
+			{#each cart as item}
+				<p>{item.product.name} - Quantité: {item.quantity}</p>
+			{/each}
 		</div>
 		<button>Valider la commande</button>
 	</section>

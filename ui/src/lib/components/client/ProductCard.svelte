@@ -4,11 +4,14 @@
 		price: number;
 		image: string;
 		openAction: (clickedElement: HTMLElement) => void;
+		addTocart: (clickedElement: HTMLElement) => void;
 	}
 
-	let { name, price, image, openAction }: Props = $props();
+	let { name, price, image, openAction, addToCart }: Props = $props();
+
 
 	let infoButtonRef: HTMLElement;
+	let addToCartRef: HTMLElement;
 </script>
 
 <div class="product-card">
@@ -20,10 +23,10 @@
 	<img src={image} alt={name} class="product-image" />
 	<div class="product-header">
 		<h3>{name}</h3>
-		<button class="add-to-cart">
+		<button class="add-to-cart" onclick={() => addToCart()}>
 			{price} €
 		</button>
-	</div>
+	</div>                                 
 </div>
 
 <style lang="scss">
@@ -49,6 +52,9 @@
 		}
 		img {
 			height: 100%;
+		}
+		button{
+			z-index: 1;
 		}
 		.product-header {
 			font-family: 'Paquito';
